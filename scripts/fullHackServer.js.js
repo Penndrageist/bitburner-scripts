@@ -7,6 +7,9 @@ export async function main(ns)
 	ns.disableLog("getServerSecurityLevel");
 	
 	let server = ns.args.length > 0 ? ns.args[0] : ns.getHostname();
+	let thisScript = ns.getScriptName();
+	let thisScriptDetails = ns.ps().filter(script => script.filename == thisScript)[0];
+	let thisScriptThreads = thisScriptDetails.threads;
 
 	let secInterp = 0.9;
 	let moneyPerc = 0.75;

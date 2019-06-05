@@ -1,3 +1,10 @@
+import * as serverLists from "nsFunctions.ns";
+import {GetFlag, GetArg} from "argFunctions.ns";
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+
 const OPTIONS = {
 	sellForMoney: "Sell for Money",
 	sellForCorporation: "Sell for Corporation Funds",
@@ -28,6 +35,8 @@ function Log(ns, lHashes, lHashCap)
 export async function main(ns)
 {
     ns.disableLog("sleep");
+    ns.disableLog("getServerSecurityLevel");
+    ns.disableLog("getServerMaxMoney");
     
     var nodeStats = null;
     var i;
@@ -39,12 +48,18 @@ export async function main(ns)
 		OPTIONS.sellForCorporation,
 		OPTIONS.exchangeForCorporationResearch,
 		OPTIONS.exchangeForBladeBurnerRank,
-		OPTIONS.exchangeForBladeBurnerSP
+		OPTIONS.exchangeForBladeBurnerSP,
 	];
-    
-    if(ns.args.length == 1)
+	
+	var specificTask = null;
+	if(!GetFlag(ns, "-is"))
+	{
+		preferenceList.push(OPTIONS.reduceMinServerSec);
+		preferenceList.push(OPTIONS.increaseMaxServerMoney);
+	}
+    else if((specificTask = GetArg(ns, "--focused", null)) !== null)
     {
-        preferenceList = [OPTIONS[ns.args[0]]];
+        preferenceList = [OPTIONS[specificTask]];
     }
 	
 	var hashes = 0;
@@ -66,7 +81,41 @@ export async function main(ns)
 		for(i = 0; i < preferenceList.length; i++)
 		{
 			hashCost = ns.hacknet.hashCost(preferenceList[i]);
-			if(ns.hacknet.spendHashes(preferenceList[i]))
+            if(preferenceList[i] == OPTIONS.reduceMinServerSec ||
+              preferenceList[i] == OPTIONS.increaseMaxServerMoney)
+            {
+                var targetServer = '';
+                var serverList = serverLists.GetAllServers_KnownStatic_Unsorted();
+                
+                if(preferenceList[i] == OPTIONS.reduceMinServerSec)
+                {
+                    var minSecLevel = 3;
+                    serverList = serverList.filter(s => ns.getServerSecurityLevel(s) > minSecLevel);
+                    //serverList.sort((a,b) => ns.getServerSecurityLevel(b) - ns.getServerSecurityLevel(a));
+                    serverList.sort((a,b) => ns.getServerSecurityLevel(a) - ns.getServerSecurityLevel(b));
+                }
+                else if(preferenceList[i] == OPTIONS.increaseMaxServerMoney)
+                {
+                    serverList = serverList.filter(s => 
+                                                  s != "CSEC" && 
+                                                  s != "avmnite-02h" && 
+                                                  s != "run4theh111z" && 
+                                                  s != "I.I.I.I");
+                    serverList = serverList.filter(s => ns.getServerMaxMoney(s) > 0);
+                    serverList.sort((a,b) => ns.getServerMaxMoney(a) - ns.getServerMaxMoney(b));
+                }
+                
+                if(serverList.length > 0)targetServer = serverList[0];
+                
+                if(targetServer !== '' && ns.hacknet.spendHashes(preferenceList[i], targetServer))
+                {
+                    ns.print(`Spent ${hashCost} on ${preferenceList[i]} -> ${targetServer}`);
+                    ns.print(`${targetServer}: SecLevel -> ${ns.nFormat(ns.getServerSecurityLevel(targetServer), "0.000")}`);
+                    ns.print(`${targetServer}: MaxMoney -> ${ns.nFormat(ns.getServerMaxMoney(targetServer), "$0.000a")}`);
+                    break;
+                }
+            }
+            else if(ns.hacknet.spendHashes(preferenceList[i]))
 			{
 				ns.print(`Spent ${hashCost} on ${preferenceList[i]}`);
 				break;

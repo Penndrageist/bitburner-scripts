@@ -33,15 +33,18 @@ import {
 } from "contractSolutions_ipGen.ns";
 
 
-function Contract(ns, contractName, serverLocation)
-{
-	this.ns = ns;
-	this.contractName = contractName;
-	this.serverLocation = serverLocation;
-	
-	this.type = this.ns.codingcontract.getContractType(this.contractName, this.serverLocation);
-	this.data = this.ns.codingcontract.getData(this.contractName, this.serverLocation);
-	this.remainingAttempts = this.ns.codingcontract.getNumTriesRemaining(this.contractName, this.serverLocation);
+export class Contract
+{   
+    constructor(ns, contractName, serverLocation)
+    {
+        this.ns = ns;
+        this.contractName = contractName;
+        this.serverLocation = serverLocation;
+
+        this.type = this.ns.codingcontract.getContractType(this.contractName, this.serverLocation);
+        this.data = this.ns.codingcontract.getData(this.contractName, this.serverLocation);
+        this.remainingAttempts = this.ns.codingcontract.getNumTriesRemaining(this.contractName, this.serverLocation);
+    }
 }
 
 Contract.prototype.printData = function()

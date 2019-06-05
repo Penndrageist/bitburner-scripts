@@ -2,7 +2,7 @@ import {GetFlag, GetArg} from "argFunctions.ns";
 
 //Requires access to the TIX API and the 4S Mkt Data API
 
-let fracH = 0.2;            // amount of corpus to keep each buying cycle
+let fracH = 0.0001;            // amount of corpus to keep each buying cycle
 let commission = 100000;    //Buy or sell commission
 let numCycles = 2;          //Each cycle is 5 seconds
 
@@ -53,38 +53,38 @@ Stock.prototype.Refresh = function()
         this.expRet = Math.abs(this.expRet);
         this.buyPosition = this.prob > 0 ? "L" : "S";
     }
-}
+};
 
 Stock.prototype.ExpectedReturn = function()
 {
     return this.expRet;
-}
+};
 
 Stock.prototype.TotalShares = function()
 {
     return this.longShares + this.shortShares;
-}
+};
 
 Stock.prototype.CorpusValue = function()
 {
     return this.price * this.TotalShares();
-}
+};
 
 Stock.prototype.LongProfit = function()
 {
     return this.longShares * (this.price - this.buyPrice);
-}
+};
 
 Stock.prototype.ShortProfit = function()
 {
     return this.shortShares * (this.shortBuyPrice - this.price);
-}
+};
 
 Stock.prototype.Flipped = function()
 {
     return (this.buyPosition == "L" && this.shortShares > 0) ||
             (this.buyPosition == "S" && this.longShares > 0);
-}
+};
 
 Stock.prototype.SellLong = function()
 {
@@ -100,7 +100,7 @@ Stock.prototype.SellLong = function()
     }
     
     return 0;
-}
+};
 
 Stock.prototype.SellShort = function()
 {
@@ -116,7 +116,7 @@ Stock.prototype.SellShort = function()
     }
     
     return 0;
-}
+};
 
 Stock.prototype.SellFlipped = function()
 {
@@ -133,7 +133,7 @@ Stock.prototype.SellFlipped = function()
     }
     
     return profit;
-}
+};
 
 Stock.prototype.SellAll = function()
 {
@@ -143,7 +143,7 @@ Stock.prototype.SellAll = function()
     profit += this.SellShort();
     
     return profit;
-}
+};
 
 Stock.prototype.Buy = function(numShares)
 {
@@ -172,7 +172,18 @@ Stock.prototype.Buy = function(numShares)
     }
     
     return 0;
-}
+};
+
+Stock.prototype.getStockSaleGain = function()
+{
+	var numStocks = this.buyPosition == "L" ? this.longShares : this.shortShares;
+	return this.ns.getStockSaleGain(this.sym, numStocks, this.buyPosition);
+};
+
+Stock.prototype.getStockPurchaseCost = function(numStocks)
+{
+	return this.ns.getStockPurchaseCost(this.sym, numStocks, this.buyPosition);
+};
 
 function refresh(ns, stocks, myStocks)
 {
@@ -307,28 +318,31 @@ export async function main(ns) {
             let numShares = Math.floor((cashToSpend - commission)/stock.price);
             numShares = Math.min(numShares, maxShares - stock.TotalShares());
             
-            //ns.print(`Stock[${stock.sym}] => (${numShares} * ${stock.expRet} * ${stock.price} * ${numCycles}) > ${commission} => ${numShares * stock.expRet * stock.price * numCycles}`);
-            if ((numShares * stock.ExpectedReturn() * stock.price * numCycles) > commission)
+			//numShares = Math.min(numShares, 100000);
+			
+            while(numShares > 0)
             {
-                // bought some, so continue to the next stock
-                let spent = stock.Buy(numShares);
-                
-                if(spent > 0)
-                {
-                    cashToSpend -= spent;
-                    cycleProfit -= commission;
-                }
-                
-                if(cashToSpend < commission)
-                {
+                if ((numShares * stock.ExpectedReturn() * stock.price * numCycles) > commission && stock.getStockPurchaseCost(numShares) <= cashToSpend)
                     break;
-                }
                 
-                s++;
-                continue;
+                numShares -= 1;
             }
             
-            break;
+            // bought some, so continue to the next stock
+            let spent = stock.Buy(numShares);
+
+            if(spent > 0)
+            {
+                cashToSpend -= spent;
+                cycleProfit -= commission;
+            }
+
+            if(cashToSpend < commission)
+            {
+                break;
+            }
+
+            s++;
         }
         
         runningProfit += cycleProfit;

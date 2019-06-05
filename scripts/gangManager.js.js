@@ -42,6 +42,7 @@ let memberNamePool = [
 export async function main(ns)
 {
 	var balanceTasks = !GetFlag(ns, "--focused");
+	var minCombatWinLevel = Math.min(GetArg(ns, "-c", 0.6), 1.0);
 	
 	var buyAll = GetFlag(ns, "--buyAll");
 	
@@ -89,11 +90,28 @@ export async function main(ns)
 		desirableAugs.push("Synfibril Muscle");
 		desirableAugs.push("Graphene Bone Lacings");
 	}
+    
 	
     var ascensionCycles = GetArg(ns, "--asc", 600000);
 	var nextAscensionAttempt = 0;
-	var cycleMs = 1100;
+	var cycleMs = 2100;
 	var ascensionMultLimit = GetArg(ns, "--alim", 2);
+	
+	ns.print(`unassignedTask: ${unassignedTask}`);
+	ns.print(`territoryTask: ${territoryTask}`);
+	ns.print(`trainingTasks: ${trainingTasks}`);
+	ns.print(`possibleTasks: ${possibleTasks}`);
+	ns.print(`wantedLevelLowerTask: ${wantedLevelLowerTask}`);
+	
+	await ns.sleep(10000);
+	
+	var otherGangs = ns.gang.getOtherGangInformation();
+	var otherGangNames = [];
+	for(var gangName in otherGangs)
+	{
+		otherGangNames.push(gangName);
+		//ns.tprint(gangName);
+	}
 	
     while(true)
     {
@@ -102,6 +120,15 @@ export async function main(ns)
 		var buyableEquipment = ns.gang.getEquipmentNames().filter(e => {
 			return ns.gang.getEquipmentType(e) != "Augmentation" || desirableAugs.includes(e);
 		});
+        
+        if(myGang.isHacking)
+        {
+            ns.gang.setTerritoryWarfare(false);
+        }
+		else
+		{
+            ns.gang.setTerritoryWarfare(otherGangNames.every(name => ns.gang.getChanceToWinClash(name) > minCombatWinLevel));
+		}
         
         var members = ns.gang.getMemberNames();
 
@@ -201,7 +228,7 @@ export async function main(ns)
 		{
             var memCount = members.length;
             
-            while(members.length > (memCount / 2))
+            while(members.length > Math.floor(memCount / 2))
             {
                 member = members.pop();
                 ns.gang.setMemberTask(member, territoryTask);
@@ -219,37 +246,25 @@ export async function main(ns)
 			myGang = ns.gang.getGangInformation();
 			
 			var reduceWanted;
+            
+            reduceWanted = myGang.wantedLevel > 1;
 			if(balanceTasks)
 			{
-				reduceWanted = myGang.wantedLevel > 1;
-			}
-			else
-			{
-				reduceWanted = myGang.wantedLevelGainRate > 0;
+                reduceWanted |= myGang.wantedLevelGainRate > 0;
 			}
 			
-            /*
             if((myGang.isHacking && memInfo.hacking < statsTarget) ||
               (!myGang.isHacking && memInfo.strength < statsTarget && memInfo.agility < statsTarget && memInfo.charisma < statsTarget && memInfo.defense < statsTarget))
             {
                 task = trainingTasks[getRandomInt(trainingTasks.length)];
             }
-            else 
-            */ 
-            if(reduceWanted)
+            else if(reduceWanted)
             {
                 task = wantedLevelLowerTask;
             }
             else
             {
-                if(Math.random() > 0.25)
-                {
-                    task = possibleTasks[possibleTasks.length - getRandomInt(2) - 1];
-                }
-                else
-                {
-                    task = trainingTasks[getRandomInt(trainingTasks.length)];
-                }
+                task = possibleTasks[getRandomInt(possibleTasks.length) - 1];
             }
 
             ns.gang.setMemberTask(member, task);
