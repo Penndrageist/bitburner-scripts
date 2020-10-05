@@ -109,8 +109,9 @@ export async function main(ns)
 	var otherGangNames = [];
 	for(var gangName in otherGangs)
 	{
-		otherGangNames.push(gangName);
-		//ns.tprint(gangName);
+		if (gangName != myGang.faction) {
+			otherGangNames.push(gangName);
+		}
 	}
 	
     while(true)
