@@ -150,6 +150,8 @@ export async function main(ns)
 			var hadAll = true;
 		
             memInfo = ns.gang.getMemberInformation(m);
+			if(memInfo.equipment == undefined) memInfo.equipment = [];
+			if(memInfo.augmentations == undefined) memInfo.augmentations = [];	
 			
 			ns.gang.setMemberTask(m, unassignedTask);
 			
